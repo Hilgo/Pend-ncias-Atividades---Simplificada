@@ -1,0 +1,5 @@
+# Ignore all CSV files and xlsx files
+*.csv
+*.xlsx
+__pycache__/
+*.py[cod]
