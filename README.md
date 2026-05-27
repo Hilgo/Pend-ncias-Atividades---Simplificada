@@ -185,7 +185,7 @@ python analisar_pendencias.py --ate-semana 8
 ```
 Isso gera uma cópia dos relatórios considerando apenas até a semana 8.
 
-### 3. **Rastrear Histórico**
+### 2. **Rastrear Histórico**
 Renomeie a pasta `saida/` antes de cada execução para não sobrescrever:
 ```bash
 move saida saida_2026_05_semana1
