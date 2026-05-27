@@ -78,64 +78,64 @@ Gera relatórios adicionais considerando apenas atividades até a semana 8. Úti
 
 ## 📁 Estrutura de Saída
 
-Após a execução, a pasta `saida/` conterá:
+Após a execução, a pasta `saida/` conterá **arquivos Excel**:
 
 ### **Relatórios Gerais**
 ```
 saida/
-├── conferencia_estrutural.csv        # Validação de estrutura
-├── conferencia_semanas_colunas.csv   # Detalhe das semanas extraídas
-├── resumo_geral_por_turma.csv        # Resumo de pendências por turma
-└── conferencia_geral.xlsx            # Consolidação em Excel
+└── conferencia_geral.xlsx            # Consolidação em Excel com abas:
+                                       # - Conferencia Estrutural
+                                       # - Semanas por Coluna
+                                       # - Resumo Geral Turma
 ```
 
 ### **Relatórios por Turma**
 ```
 saida/
-└── 2DS/
-    ├── base_consolidada.csv               # Todos os registros da turma
-    ├── resumo_por_disciplina.csv          # Pendências por disciplina
-    ├── resumo_por_semana.csv              # Pendências por semana
-    ├── resumo_por_aluno.csv               # Ranking de pendências
-    ├── cobranca_alunos.csv                # Pendências por aluno e disciplina
-    ├── detalhamento_aluno_semana.csv      # Máximo detalhe
-    └── 2DS_analise_pendencias.xlsx      # Consolidação em Excel
+└── 2ds/
+    └── 2ds_analise_pendencias.xlsx   # Excel com abas:
+                                       # - Base Consolidada
+                                       # - Resumo Disciplina
+                                       # - Resumo Semana
+                                       # - Resumo por Aluno
+                                       # - Cobranca
+                                       # - Aluno Semana
 ```
 
 ### **Relatórios Recortados por Semana** (se `--ate-semana` usado)
 ```
 saida/
 └── ate_semana_8/
-    ├── base_consolidada_ate_semana.csv
-    ├── pendencias_por_aluno_turma.csv
-    ├── pendencias_por_aluno_disciplina.csv
-    ├── pendencias_por_turma_disciplina.csv
-    ├── pendencias_por_semana.csv
-    ├── [turma]/
-    │   ├── pendencias_por_aluno.csv
-    │   └── pendencias_por_aluno_disciplina.csv
-    └── analise_pendencias_ate_semana_8.xlsx
+    ├── 2ds/
+    │   └── 2ds_ate_semana_8.xlsx         # Excel com abas:
+    │                                      # - Base Consolidada
+    │                                      # - Resumo por Aluno
+    │                                      # - Resumo Disciplina
+    │                                      # - Resumo Semana
+    │                                      # - Cobranca
+    │                                      # - Aluno Semana
+    └── 3ds/
+        └── 3ds_ate_semana_8.xlsx         # (mesma estrutura)
 ```
 
 ---
 
 ## 📊 Entendendo os Relatórios
 
-### `resumo_por_aluno.csv`
-Lista alunos com total de pendências em **ordem decrescente** (maiores primeiro).
-**Uso**: Identificar alunos com mais atrasos para cobrança prioritária.
+### `conferencia_geral.xlsx`
+Arquivo consolidado com 3 abas:
+- **Conferencia Estrutural**: Validação dos arquivos importados
+- **Semanas por Coluna**: Detalhe das semanas detectadas em cada coluna
+- **Resumo Geral Turma**: Pendências resumidas por turma e tipo
 
-### `cobranca_alunos.csv`
-Pendências detalhadas por aluno, disciplina e tipo (registro/quiz).
-**Uso**: Cobrar especificamente qual atividade falta.
-
-### `resumo_por_semana.csv`
-Consolidação de pendências por semana.
-**Uso**: Identificar em qual semana há mais atrasos.
-
-### `base_consolidada.xlsx`
-Todas as abas em um único arquivo Excel com formatação.
-**Uso**: Distribuir para coordenação ou análise em ferramentas como Power BI.
+### `[TURMA]_analise_pendencias.xlsx`
+Relatório completo de cada turma com 6 abas:
+- **Base Consolidada**: Todos os registros (aluno, atividade, status, semana)
+- **Resumo por Aluno**: Ranking de pendências (inclui todos os alunos, mesmo com 0 pendências)
+- **Resumo Disciplina**: Pendências por disciplina
+- **Resumo Semana**: Pendências por semana
+- **Cobrança**: Detalhe para cobrar (aluno + disciplina + tipo) - apenas alunos com pendências
+- **Aluno Semana**: Máximo detalhe (aluno + disciplina + semana + tipo) - apenas alunos com pendências
 
 ---
 
@@ -175,6 +175,24 @@ pip install pandas openpyxl
 
 ---
 
+## 💡 Dicas de Uso
+
+
+### 1. **Análise Parcial do Bimestre**
+Use `--ate-semana` durante o semestre:
+```bash
+python analisar_pendencias.py --ate-semana 8
+```
+Isso gera uma cópia dos relatórios considerando apenas até a semana 8.
+
+### 3. **Rastrear Histórico**
+Renomeie a pasta `saida/` antes de cada execução para não sobrescrever:
+```bash
+move saida saida_2026_05_semana1
+```
+
+---
+
 ## 📝 Exemplo Prático
 
 **Passo 1**: Exporte 3 relatórios da AVA
@@ -191,15 +209,11 @@ pip install pandas openpyxl
 python analisar_pendencias.py
 ```
 
-**Passo 4**: Abra `saida/2DS/resumo_por_aluno.csv`
-```
-aluno,total_pendencias
-João Silva,15
-Maria Santos,8
-Pedro Costa,2
-```
+**Passo 4**: Abra `saida/2ds/2ds_analise_pendencias.xlsx`
+- Clique na aba "Resumo por Aluno"
+- Veja o ranking de alunos com mais pendências
 
-**Passo 5**: Use para cobrança de atividades pendentes!
+**Passo 5**: Use os dados para cobrança de atividades pendentes!
 
 ---
 

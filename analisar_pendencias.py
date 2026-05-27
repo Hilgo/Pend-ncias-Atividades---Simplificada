@@ -202,11 +202,18 @@ def salvar_relatorios_por_turma(base: pd.DataFrame):
             .sort_values(['disciplina', 'semana', 'tipo'])
         )
 
-        resumo_por_aluno = (
+        alunos_turma = base_turma[['aluno']].drop_duplicates()
+        resumo_por_aluno_pendencias = (
             base_pendencias
             .groupby(['aluno'])
             .size()
             .reset_index(name='total_pendencias')
+        )
+        resumo_por_aluno = (
+            alunos_turma
+            .merge(resumo_por_aluno_pendencias, on=['aluno'], how='left')
+            .fillna({'total_pendencias': 0})
+            .assign(total_pendencias=lambda df: df['total_pendencias'].astype(int))
             .sort_values(['total_pendencias', 'aluno'], ascending=[False, True])
         )
 
@@ -225,13 +232,6 @@ def salvar_relatorios_por_turma(base: pd.DataFrame):
             .reset_index(name='pendencias')
             .sort_values(['aluno', 'disciplina', 'semana', 'tipo'])
         )
-
-        base_turma.to_csv(pasta_turma / 'base_consolidada.csv', index=False, encoding='utf-8-sig')
-        resumo_por_disciplina.to_csv(pasta_turma / 'resumo_por_disciplina.csv', index=False, encoding='utf-8-sig')
-        resumo_por_semana.to_csv(pasta_turma / 'resumo_por_semana.csv', index=False, encoding='utf-8-sig')
-        resumo_por_aluno.to_csv(pasta_turma / 'resumo_por_aluno.csv', index=False, encoding='utf-8-sig')
-        cobranca_alunos.to_csv(pasta_turma / 'cobranca_alunos.csv', index=False, encoding='utf-8-sig')
-        detalhamento_aluno_semana.to_csv(pasta_turma / 'detalhamento_aluno_semana.csv', index=False, encoding='utf-8-sig')
 
         with pd.ExcelWriter(pasta_turma / f'{slug(turma)}_analise_pendencias.xlsx', engine='openpyxl') as writer:
             base_turma.to_excel(writer, sheet_name='Base Consolidada', index=False)
@@ -253,10 +253,6 @@ def gerar_relatorios_gerais(base: pd.DataFrame, conferencia_df: pd.DataFrame, se
         .sort_values(['turma', 'tipo'])
     )
 
-    conferencia_df.to_csv(PASTA_SAIDA / 'conferencia_estrutural.csv', index=False, encoding='utf-8-sig')
-    semanas_df.to_csv(PASTA_SAIDA / 'conferencia_semanas_colunas.csv', index=False, encoding='utf-8-sig')
-    resumo_por_turma.to_csv(PASTA_SAIDA / 'resumo_geral_por_turma.csv', index=False, encoding='utf-8-sig')
-
     with pd.ExcelWriter(PASTA_SAIDA / 'conferencia_geral.xlsx', engine='openpyxl') as writer:
         conferencia_df.to_excel(writer, sheet_name='Conferencia Estrutural', index=False)
         semanas_df.to_excel(writer, sheet_name='Semanas por Coluna', index=False)
@@ -268,88 +264,70 @@ def gerar_relatorios_ate_semana(base: pd.DataFrame, semana_limite: int):
         raise ValueError('A semana limite precisa ser maior ou igual a 1.')
 
     base_ate_semana = filtrar_ate_semana(base, semana_limite)
-    base_pendencias = base_ate_semana[base_ate_semana['status'] == 'pendente'].copy()
-
+    
     pasta_recorte = PASTA_SAIDA / f'ate_semana_{semana_limite}'
     pasta_recorte.mkdir(exist_ok=True)
 
-    pendencias_por_aluno_turma = contar_pendencias_por_aluno(base_ate_semana, base_pendencias)
-
-    pendencias_por_aluno_disciplina = (
-        base_pendencias
-        .groupby(['turma', 'aluno', 'disciplina', 'tipo'])
-        .size()
-        .reset_index(name='pendencias_ate_semana')
-        .sort_values(['turma', 'aluno', 'disciplina', 'tipo'])
-    )
-
-    pendencias_por_turma_disciplina = (
-        base_pendencias
-        .groupby(['turma', 'disciplina', 'tipo'])
-        .size()
-        .reset_index(name='pendencias_ate_semana')
-        .sort_values(['turma', 'disciplina', 'tipo'])
-    )
-
-    pendencias_por_semana = (
-        base_pendencias
-        .groupby(['turma', 'disciplina', 'semana', 'tipo'])
-        .size()
-        .reset_index(name='pendencias_ate_semana')
-        .sort_values(['turma', 'disciplina', 'semana', 'tipo'])
-    )
-
-    base_ate_semana.to_csv(pasta_recorte / 'base_consolidada_ate_semana.csv', index=False, encoding='utf-8-sig')
-    pendencias_por_aluno_turma.to_csv(
-        pasta_recorte / 'pendencias_por_aluno_turma.csv',
-        index=False,
-        encoding='utf-8-sig',
-        sep=';'
-    )
-    pendencias_por_aluno_disciplina.to_csv(
-        pasta_recorte / 'pendencias_por_aluno_disciplina.csv',
-        index=False,
-        encoding='utf-8-sig'
-    )
-    pendencias_por_turma_disciplina.to_csv(
-        pasta_recorte / 'pendencias_por_turma_disciplina.csv',
-        index=False,
-        encoding='utf-8-sig'
-    )
-    pendencias_por_semana.to_csv(pasta_recorte / 'pendencias_por_semana.csv', index=False, encoding='utf-8-sig')
-
-    for turma, base_turma in base_pendencias.groupby('turma'):
+    for turma, base_turma_ate_semana in base_ate_semana.groupby('turma'):
         pasta_turma = pasta_recorte / slug(turma)
         pasta_turma.mkdir(exist_ok=True)
 
-        base_ate_semana_turma = base_ate_semana[base_ate_semana['turma'] == turma]
-        resumo_aluno_turma = contar_pendencias_por_aluno(base_ate_semana_turma, base_turma).drop(columns=['turma'])
+        base_pendencias = base_turma_ate_semana[base_turma_ate_semana['status'] == 'pendente'].copy()
 
-        resumo_aluno_disciplina = (
-            base_turma
+        alunos_turma = base_turma_ate_semana[['aluno']].drop_duplicates()
+        resumo_por_aluno_pendencias = (
+            base_pendencias
+            .groupby(['aluno'])
+            .size()
+            .reset_index(name='pendencias_ate_semana')
+        )
+        resumo_por_aluno = (
+            alunos_turma
+            .merge(resumo_por_aluno_pendencias, on=['aluno'], how='left')
+            .fillna({'pendencias_ate_semana': 0})
+            .assign(pendencias_ate_semana=lambda df: df['pendencias_ate_semana'].astype(int))
+            .sort_values(['pendencias_ate_semana', 'aluno'], ascending=[False, True])
+        )
+
+        resumo_por_disciplina = (
+            base_pendencias
+            .groupby(['disciplina', 'tipo'])
+            .size()
+            .reset_index(name='pendencias_ate_semana')
+            .sort_values(['disciplina', 'tipo'])
+        )
+
+        resumo_por_semana = (
+            base_pendencias
+            .groupby(['disciplina', 'semana', 'tipo'])
+            .size()
+            .reset_index(name='pendencias_ate_semana')
+            .sort_values(['disciplina', 'semana', 'tipo'])
+        )
+
+        cobranca_alunos = (
+            base_pendencias
             .groupby(['aluno', 'disciplina', 'tipo'])
             .size()
             .reset_index(name='pendencias_ate_semana')
             .sort_values(['aluno', 'disciplina', 'tipo'])
         )
 
-        resumo_aluno_turma.to_csv(
-            pasta_turma / 'pendencias_por_aluno.csv',
-            index=False,
-            encoding='utf-8-sig',
-            sep=';'
-        )
-        resumo_aluno_disciplina.to_csv(
-            pasta_turma / 'pendencias_por_aluno_disciplina.csv',
-            index=False,
-            encoding='utf-8-sig'
+        detalhamento_aluno_semana = (
+            base_pendencias
+            .groupby(['aluno', 'disciplina', 'semana', 'tipo'])
+            .size()
+            .reset_index(name='pendencias_ate_semana')
+            .sort_values(['aluno', 'disciplina', 'semana', 'tipo'])
         )
 
-    with pd.ExcelWriter(pasta_recorte / f'analise_pendencias_ate_semana_{semana_limite}.xlsx', engine='openpyxl') as writer:
-        pendencias_por_aluno_turma.to_excel(writer, sheet_name='Aluno Turma', index=False)
-        pendencias_por_aluno_disciplina.to_excel(writer, sheet_name='Aluno Disciplina', index=False)
-        pendencias_por_turma_disciplina.to_excel(writer, sheet_name='Turma Disciplina', index=False)
-        pendencias_por_semana.to_excel(writer, sheet_name='Semana', index=False)
+        with pd.ExcelWriter(pasta_turma / f'{slug(turma)}_ate_semana_{semana_limite}.xlsx', engine='openpyxl') as writer:
+            base_turma_ate_semana.to_excel(writer, sheet_name='Base Consolidada', index=False)
+            resumo_por_aluno.to_excel(writer, sheet_name='Resumo por Aluno', index=False)
+            resumo_por_disciplina.to_excel(writer, sheet_name='Resumo Disciplina', index=False)
+            resumo_por_semana.to_excel(writer, sheet_name='Resumo Semana', index=False)
+            cobranca_alunos.to_excel(writer, sheet_name='Cobranca', index=False)
+            detalhamento_aluno_semana.to_excel(writer, sheet_name='Aluno Semana', index=False)
 
 
 def parse_args():
