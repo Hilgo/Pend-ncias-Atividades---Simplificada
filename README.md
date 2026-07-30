@@ -153,8 +153,28 @@ Relatório completo de cada turma e bimestre com 6 abas:
 ### Instalação de Dependências
 
 ```bash
-pip install pandas openpyxl
+pip install -r requirements.txt
 ```
+
+---
+
+## 🌐 Uso pela Web
+
+A aplicação web usa a mesma lógica do script local. Os CSVs e os relatórios são mantidos apenas em uma pasta temporária durante o processamento; ao terminar o download do ZIP, essa pasta é removida.
+
+```bash
+uvicorn app_web:app --reload
+```
+
+Abra `http://127.0.0.1:8000`, envie os CSVs e, opcionalmente, informe a semana limite. O navegador receberá um arquivo `relatorios_pendencias.zip`.
+
+O modo local continua disponível e inalterado:
+
+```bash
+python analisar_pendencias.py --ate-semana 8
+```
+
+> Para disponibilizar a aplicação a outros professores, use HTTPS e inclua autenticação antes de torná-la pública. Os relatórios contêm dados pessoais de estudantes.
 
 ---
 

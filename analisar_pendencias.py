@@ -1,11 +1,11 @@
 from pathlib import Path
 import argparse
 import re
+from typing import Optional
 import pandas as pd
 
 PASTA_ENTRADA = Path('entrada')
 PASTA_SAIDA = Path('saida')
-PASTA_SAIDA.mkdir(exist_ok=True)
 
 ENCODINGS = ['utf-16', 'latin1', 'cp1252', 'utf-8-sig']
 SEPARADORES = ['\t', ';', ',', None]
@@ -85,10 +85,10 @@ def contar_pendencias_por_aluno(base_ate_semana: pd.DataFrame, base_pendencias: 
     )
 
 
-def montar_base_consolidada():
-    arquivos_csv = sorted(PASTA_ENTRADA.glob('*.csv'))
+def montar_base_consolidada(pasta_entrada: Path = PASTA_ENTRADA):
+    arquivos_csv = sorted(pasta_entrada.glob('*.csv'))
     if not arquivos_csv:
-        raise FileNotFoundError('Nenhum arquivo CSV encontrado na pasta entrada/.')
+        raise FileNotFoundError(f'Nenhum arquivo CSV encontrado em: {pasta_entrada}')
 
     linhas = []
     conferencia = []
@@ -239,19 +239,24 @@ def salvar_relatorio(base_turma: pd.DataFrame, caminho_saida: Path):
         detalhamento_aluno_semana.to_excel(writer, sheet_name='Aluno Semana', index=False)
 
 
-def salvar_relatorios_por_turma(base: pd.DataFrame):
+def salvar_relatorios_por_turma(base: pd.DataFrame, pasta_saida: Path = PASTA_SAIDA):
     for (turma, bimestre), base_turma in base.groupby(['turma', 'bimestre']):
-        pasta_turma = PASTA_SAIDA / slug(turma) / slug(bimestre)
+        pasta_turma = pasta_saida / slug(turma) / slug(bimestre)
         nome_arquivo = f'{slug(turma)}_{slug(bimestre)}_analise_pendencias.xlsx'
         salvar_relatorio(base_turma, pasta_turma / nome_arquivo)
 
     for turma, base_turma in base.groupby('turma'):
-        pasta_turma = PASTA_SAIDA / slug(turma)
+        pasta_turma = pasta_saida / slug(turma)
         nome_arquivo = f'{slug(turma)}_todos_bimestres_analise_pendencias.xlsx'
         salvar_relatorio(base_turma, pasta_turma / nome_arquivo)
 
 
-def gerar_relatorios_gerais(base: pd.DataFrame, conferencia_df: pd.DataFrame, semanas_df: pd.DataFrame):
+def gerar_relatorios_gerais(
+    base: pd.DataFrame,
+    conferencia_df: pd.DataFrame,
+    semanas_df: pd.DataFrame,
+    pasta_saida: Path = PASTA_SAIDA
+):
     base_pendencias = base[base['status'] == 'pendente'].copy()
 
     resumo_por_turma = (
@@ -262,7 +267,8 @@ def gerar_relatorios_gerais(base: pd.DataFrame, conferencia_df: pd.DataFrame, se
         .sort_values(['turma', 'bimestre', 'tipo'])
     )
 
-    with pd.ExcelWriter(PASTA_SAIDA / 'conferencia_geral.xlsx', engine='openpyxl') as writer:
+    pasta_saida.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(pasta_saida / 'conferencia_geral.xlsx', engine='openpyxl') as writer:
         conferencia_df.to_excel(writer, sheet_name='Conferencia Estrutural', index=False)
         semanas_df.to_excel(writer, sheet_name='Semanas por Coluna', index=False)
         resumo_por_turma.to_excel(writer, sheet_name='Resumo Geral Turma', index=False)
@@ -328,12 +334,16 @@ def salvar_relatorio_ate_semana(base_turma: pd.DataFrame, caminho_saida: Path):
         detalhamento_aluno_semana.to_excel(writer, sheet_name='Aluno Semana', index=False)
 
 
-def gerar_relatorios_ate_semana(base: pd.DataFrame, semana_limite: int):
+def gerar_relatorios_ate_semana(
+    base: pd.DataFrame,
+    semana_limite: int,
+    pasta_saida: Path = PASTA_SAIDA
+):
     if semana_limite < 1:
         raise ValueError('A semana limite precisa ser maior ou igual a 1.')
 
     base_ate_semana = filtrar_ate_semana(base, semana_limite)
-    pasta_recorte = PASTA_SAIDA / f'ate_semana_{semana_limite}'
+    pasta_recorte = pasta_saida / f'ate_semana_{semana_limite}'
 
     for (turma, bimestre), base_turma in base_ate_semana.groupby(['turma', 'bimestre']):
         pasta_turma = pasta_recorte / slug(turma) / slug(bimestre)
@@ -356,15 +366,26 @@ def parse_args():
     return parser.parse_args()
 
 
+def executar_analise(
+    pasta_entrada: Path,
+    pasta_saida: Path,
+    ate_semana: Optional[int] = None
+):
+    """Gera todos os relatórios a partir das pastas informadas."""
+    pasta_saida.mkdir(parents=True, exist_ok=True)
+    base, conferencia_df, semanas_df = montar_base_consolidada(pasta_entrada)
+    salvar_relatorios_por_turma(base, pasta_saida)
+    gerar_relatorios_gerais(base, conferencia_df, semanas_df, pasta_saida)
+    if ate_semana is not None:
+        gerar_relatorios_ate_semana(base, ate_semana, pasta_saida)
+
+
 def main():
     args = parse_args()
 
     print('Iniciando análise de pendências...')
-    base, conferencia_df, semanas_df = montar_base_consolidada()
-    salvar_relatorios_por_turma(base)
-    gerar_relatorios_gerais(base, conferencia_df, semanas_df)
+    executar_analise(PASTA_ENTRADA, PASTA_SAIDA, args.ate_semana)
     if args.ate_semana is not None:
-        gerar_relatorios_ate_semana(base, args.ate_semana)
         print(f'Relatorios ate a semana {args.ate_semana} gerados com sucesso!')
     print('Análise concluída com sucesso!')
     print(f'Relatórios salvos em: {PASTA_SAIDA.resolve()}')
