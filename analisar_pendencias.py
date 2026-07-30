@@ -179,67 +179,76 @@ def montar_base_consolidada():
     return base, conferencia_df, semanas_df
 
 
+def salvar_relatorio(base_turma: pd.DataFrame, caminho_saida: Path):
+    caminho_saida.parent.mkdir(parents=True, exist_ok=True)
+    base_pendencias = base_turma[base_turma['status'] == 'pendente'].copy()
+
+    resumo_por_disciplina = (
+        base_pendencias
+        .groupby(['disciplina', 'tipo'])
+        .size()
+        .reset_index(name='pendencias')
+        .sort_values(['disciplina', 'tipo'])
+    )
+
+    resumo_por_semana = (
+        base_pendencias
+        .groupby(['disciplina', 'semana', 'tipo'])
+        .size()
+        .reset_index(name='pendencias')
+        .sort_values(['disciplina', 'semana', 'tipo'])
+    )
+
+    alunos_turma = base_turma[['aluno']].drop_duplicates()
+    resumo_por_aluno_pendencias = (
+        base_pendencias
+        .groupby(['aluno'])
+        .size()
+        .reset_index(name='total_pendencias')
+    )
+    resumo_por_aluno = (
+        alunos_turma
+        .merge(resumo_por_aluno_pendencias, on=['aluno'], how='left')
+        .fillna({'total_pendencias': 0})
+        .assign(total_pendencias=lambda df: df['total_pendencias'].astype(int))
+        .sort_values(['total_pendencias', 'aluno'], ascending=[False, True])
+    )
+
+    cobranca_alunos = (
+        base_pendencias
+        .groupby(['aluno', 'disciplina', 'tipo'])
+        .size()
+        .reset_index(name='pendencias')
+        .sort_values(['aluno', 'disciplina', 'tipo'])
+    )
+
+    detalhamento_aluno_semana = (
+        base_pendencias
+        .groupby(['aluno', 'disciplina', 'semana', 'tipo'])
+        .size()
+        .reset_index(name='pendencias')
+        .sort_values(['aluno', 'disciplina', 'semana', 'tipo'])
+    )
+
+    with pd.ExcelWriter(caminho_saida, engine='openpyxl') as writer:
+        base_turma.to_excel(writer, sheet_name='Base Consolidada', index=False)
+        resumo_por_disciplina.to_excel(writer, sheet_name='Resumo Disciplina', index=False)
+        resumo_por_semana.to_excel(writer, sheet_name='Resumo Semana', index=False)
+        resumo_por_aluno.to_excel(writer, sheet_name='Resumo por Aluno', index=False)
+        cobranca_alunos.to_excel(writer, sheet_name='Cobranca', index=False)
+        detalhamento_aluno_semana.to_excel(writer, sheet_name='Aluno Semana', index=False)
+
+
 def salvar_relatorios_por_turma(base: pd.DataFrame):
+    for (turma, bimestre), base_turma in base.groupby(['turma', 'bimestre']):
+        pasta_turma = PASTA_SAIDA / slug(turma) / slug(bimestre)
+        nome_arquivo = f'{slug(turma)}_{slug(bimestre)}_analise_pendencias.xlsx'
+        salvar_relatorio(base_turma, pasta_turma / nome_arquivo)
+
     for turma, base_turma in base.groupby('turma'):
         pasta_turma = PASTA_SAIDA / slug(turma)
-        pasta_turma.mkdir(exist_ok=True)
-
-        base_pendencias = base_turma[base_turma['status'] == 'pendente'].copy()
-
-        resumo_por_disciplina = (
-            base_pendencias
-            .groupby(['disciplina', 'tipo'])
-            .size()
-            .reset_index(name='pendencias')
-            .sort_values(['disciplina', 'tipo'])
-        )
-
-        resumo_por_semana = (
-            base_pendencias
-            .groupby(['disciplina', 'semana', 'tipo'])
-            .size()
-            .reset_index(name='pendencias')
-            .sort_values(['disciplina', 'semana', 'tipo'])
-        )
-
-        alunos_turma = base_turma[['aluno']].drop_duplicates()
-        resumo_por_aluno_pendencias = (
-            base_pendencias
-            .groupby(['aluno'])
-            .size()
-            .reset_index(name='total_pendencias')
-        )
-        resumo_por_aluno = (
-            alunos_turma
-            .merge(resumo_por_aluno_pendencias, on=['aluno'], how='left')
-            .fillna({'total_pendencias': 0})
-            .assign(total_pendencias=lambda df: df['total_pendencias'].astype(int))
-            .sort_values(['total_pendencias', 'aluno'], ascending=[False, True])
-        )
-
-        cobranca_alunos = (
-            base_pendencias
-            .groupby(['aluno', 'disciplina', 'tipo'])
-            .size()
-            .reset_index(name='pendencias')
-            .sort_values(['aluno', 'disciplina', 'tipo'])
-        )
-
-        detalhamento_aluno_semana = (
-            base_pendencias
-            .groupby(['aluno', 'disciplina', 'semana', 'tipo'])
-            .size()
-            .reset_index(name='pendencias')
-            .sort_values(['aluno', 'disciplina', 'semana', 'tipo'])
-        )
-
-        with pd.ExcelWriter(pasta_turma / f'{slug(turma)}_analise_pendencias.xlsx', engine='openpyxl') as writer:
-            base_turma.to_excel(writer, sheet_name='Base Consolidada', index=False)
-            resumo_por_disciplina.to_excel(writer, sheet_name='Resumo Disciplina', index=False)
-            resumo_por_semana.to_excel(writer, sheet_name='Resumo Semana', index=False)
-            resumo_por_aluno.to_excel(writer, sheet_name='Resumo por Aluno', index=False)
-            cobranca_alunos.to_excel(writer, sheet_name='Cobranca', index=False)
-            detalhamento_aluno_semana.to_excel(writer, sheet_name='Aluno Semana', index=False)
+        nome_arquivo = f'{slug(turma)}_todos_bimestres_analise_pendencias.xlsx'
+        salvar_relatorio(base_turma, pasta_turma / nome_arquivo)
 
 
 def gerar_relatorios_gerais(base: pd.DataFrame, conferencia_df: pd.DataFrame, semanas_df: pd.DataFrame):
@@ -247,10 +256,10 @@ def gerar_relatorios_gerais(base: pd.DataFrame, conferencia_df: pd.DataFrame, se
 
     resumo_por_turma = (
         base_pendencias
-        .groupby(['turma', 'tipo'])
+        .groupby(['turma', 'bimestre', 'tipo'])
         .size()
         .reset_index(name='pendencias')
-        .sort_values(['turma', 'tipo'])
+        .sort_values(['turma', 'bimestre', 'tipo'])
     )
 
     with pd.ExcelWriter(PASTA_SAIDA / 'conferencia_geral.xlsx', engine='openpyxl') as writer:
@@ -259,75 +268,82 @@ def gerar_relatorios_gerais(base: pd.DataFrame, conferencia_df: pd.DataFrame, se
         resumo_por_turma.to_excel(writer, sheet_name='Resumo Geral Turma', index=False)
 
 
+def salvar_relatorio_ate_semana(base_turma: pd.DataFrame, caminho_saida: Path):
+    caminho_saida.parent.mkdir(parents=True, exist_ok=True)
+    base_pendencias = base_turma[base_turma['status'] == 'pendente'].copy()
+
+    alunos_turma = base_turma[['aluno']].drop_duplicates()
+    resumo_por_aluno_pendencias = (
+        base_pendencias
+        .groupby(['aluno'])
+        .size()
+        .reset_index(name='pendencias_ate_semana')
+    )
+    resumo_por_aluno = (
+        alunos_turma
+        .merge(resumo_por_aluno_pendencias, on=['aluno'], how='left')
+        .fillna({'pendencias_ate_semana': 0})
+        .assign(pendencias_ate_semana=lambda df: df['pendencias_ate_semana'].astype(int))
+        .sort_values(['pendencias_ate_semana', 'aluno'], ascending=[False, True])
+    )
+
+    resumo_por_disciplina = (
+        base_pendencias
+        .groupby(['disciplina', 'tipo'])
+        .size()
+        .reset_index(name='pendencias_ate_semana')
+        .sort_values(['disciplina', 'tipo'])
+    )
+
+    resumo_por_semana = (
+        base_pendencias
+        .groupby(['disciplina', 'semana', 'tipo'])
+        .size()
+        .reset_index(name='pendencias_ate_semana')
+        .sort_values(['disciplina', 'semana', 'tipo'])
+    )
+
+    cobranca_alunos = (
+        base_pendencias
+        .groupby(['aluno', 'disciplina', 'tipo'])
+        .size()
+        .reset_index(name='pendencias_ate_semana')
+        .sort_values(['aluno', 'disciplina', 'tipo'])
+    )
+
+    detalhamento_aluno_semana = (
+        base_pendencias
+        .groupby(['aluno', 'disciplina', 'semana', 'tipo'])
+        .size()
+        .reset_index(name='pendencias_ate_semana')
+        .sort_values(['aluno', 'disciplina', 'semana', 'tipo'])
+    )
+
+    with pd.ExcelWriter(caminho_saida, engine='openpyxl') as writer:
+        base_turma.to_excel(writer, sheet_name='Base Consolidada', index=False)
+        resumo_por_aluno.to_excel(writer, sheet_name='Resumo por Aluno', index=False)
+        resumo_por_disciplina.to_excel(writer, sheet_name='Resumo Disciplina', index=False)
+        resumo_por_semana.to_excel(writer, sheet_name='Resumo Semana', index=False)
+        cobranca_alunos.to_excel(writer, sheet_name='Cobranca', index=False)
+        detalhamento_aluno_semana.to_excel(writer, sheet_name='Aluno Semana', index=False)
+
+
 def gerar_relatorios_ate_semana(base: pd.DataFrame, semana_limite: int):
     if semana_limite < 1:
         raise ValueError('A semana limite precisa ser maior ou igual a 1.')
 
     base_ate_semana = filtrar_ate_semana(base, semana_limite)
-    
     pasta_recorte = PASTA_SAIDA / f'ate_semana_{semana_limite}'
-    pasta_recorte.mkdir(exist_ok=True)
 
-    for turma, base_turma_ate_semana in base_ate_semana.groupby('turma'):
+    for (turma, bimestre), base_turma in base_ate_semana.groupby(['turma', 'bimestre']):
+        pasta_turma = pasta_recorte / slug(turma) / slug(bimestre)
+        nome_arquivo = f'{slug(turma)}_{slug(bimestre)}_ate_semana_{semana_limite}.xlsx'
+        salvar_relatorio_ate_semana(base_turma, pasta_turma / nome_arquivo)
+
+    for turma, base_turma in base_ate_semana.groupby('turma'):
         pasta_turma = pasta_recorte / slug(turma)
-        pasta_turma.mkdir(exist_ok=True)
-
-        base_pendencias = base_turma_ate_semana[base_turma_ate_semana['status'] == 'pendente'].copy()
-
-        alunos_turma = base_turma_ate_semana[['aluno']].drop_duplicates()
-        resumo_por_aluno_pendencias = (
-            base_pendencias
-            .groupby(['aluno'])
-            .size()
-            .reset_index(name='pendencias_ate_semana')
-        )
-        resumo_por_aluno = (
-            alunos_turma
-            .merge(resumo_por_aluno_pendencias, on=['aluno'], how='left')
-            .fillna({'pendencias_ate_semana': 0})
-            .assign(pendencias_ate_semana=lambda df: df['pendencias_ate_semana'].astype(int))
-            .sort_values(['pendencias_ate_semana', 'aluno'], ascending=[False, True])
-        )
-
-        resumo_por_disciplina = (
-            base_pendencias
-            .groupby(['disciplina', 'tipo'])
-            .size()
-            .reset_index(name='pendencias_ate_semana')
-            .sort_values(['disciplina', 'tipo'])
-        )
-
-        resumo_por_semana = (
-            base_pendencias
-            .groupby(['disciplina', 'semana', 'tipo'])
-            .size()
-            .reset_index(name='pendencias_ate_semana')
-            .sort_values(['disciplina', 'semana', 'tipo'])
-        )
-
-        cobranca_alunos = (
-            base_pendencias
-            .groupby(['aluno', 'disciplina', 'tipo'])
-            .size()
-            .reset_index(name='pendencias_ate_semana')
-            .sort_values(['aluno', 'disciplina', 'tipo'])
-        )
-
-        detalhamento_aluno_semana = (
-            base_pendencias
-            .groupby(['aluno', 'disciplina', 'semana', 'tipo'])
-            .size()
-            .reset_index(name='pendencias_ate_semana')
-            .sort_values(['aluno', 'disciplina', 'semana', 'tipo'])
-        )
-
-        with pd.ExcelWriter(pasta_turma / f'{slug(turma)}_ate_semana_{semana_limite}.xlsx', engine='openpyxl') as writer:
-            base_turma_ate_semana.to_excel(writer, sheet_name='Base Consolidada', index=False)
-            resumo_por_aluno.to_excel(writer, sheet_name='Resumo por Aluno', index=False)
-            resumo_por_disciplina.to_excel(writer, sheet_name='Resumo Disciplina', index=False)
-            resumo_por_semana.to_excel(writer, sheet_name='Resumo Semana', index=False)
-            cobranca_alunos.to_excel(writer, sheet_name='Cobranca', index=False)
-            detalhamento_aluno_semana.to_excel(writer, sheet_name='Aluno Semana', index=False)
+        nome_arquivo = f'{slug(turma)}_todos_bimestres_ate_semana_{semana_limite}.xlsx'
+        salvar_relatorio_ate_semana(base_turma, pasta_turma / nome_arquivo)
 
 
 def parse_args():

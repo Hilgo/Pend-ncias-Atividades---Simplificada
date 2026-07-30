@@ -57,7 +57,7 @@ projeto/
     └── 3DS_Logica_1.csv
 ```
 
-Copie todos os arquivos CSV exportados da plataforma AVA para a pasta `entrada/`.
+Copie todos os arquivos CSV exportados da plataforma AVA para a pasta `entrada/`. É possível manter arquivos de mais de um bimestre juntos: os relatórios são separados por turma e bimestre.
 
 ### 4️⃣ **Executar o Script**
 
@@ -89,11 +89,13 @@ saida/
                                        # - Resumo Geral Turma
 ```
 
-### **Relatórios por Turma**
+### **Relatórios por Turma e Bimestre**
 ```
 saida/
-└── 2ds/
-    └── 2ds_analise_pendencias.xlsx   # Excel com abas:
+    └── 2ds/
+        ├── 2ds_todos_bimestres_analise_pendencias.xlsx  # Consolida todos os bimestres da turma
+        └── 2bi/
+            └── 2ds_2bi_analise_pendencias.xlsx   # Excel com abas:
                                        # - Base Consolidada
                                        # - Resumo Disciplina
                                        # - Resumo Semana
@@ -107,7 +109,9 @@ saida/
 saida/
 └── ate_semana_8/
     ├── 2ds/
-    │   └── 2ds_ate_semana_8.xlsx         # Excel com abas:
+    │   ├── 2ds_todos_bimestres_ate_semana_8.xlsx  # Consolida os bimestres sem atividades futuras
+    │   └── 2bi/
+    │       └── 2ds_2bi_ate_semana_8.xlsx # Excel com abas:
     │                                      # - Base Consolidada
     │                                      # - Resumo por Aluno
     │                                      # - Resumo Disciplina
@@ -115,7 +119,8 @@ saida/
     │                                      # - Cobranca
     │                                      # - Aluno Semana
     └── 3ds/
-        └── 3ds_ate_semana_8.xlsx         # (mesma estrutura)
+        └── 2bi/
+            └── 3ds_2bi_ate_semana_8.xlsx # (mesma estrutura)
 ```
 
 ---
@@ -128,8 +133,8 @@ Arquivo consolidado com 3 abas:
 - **Semanas por Coluna**: Detalhe das semanas detectadas em cada coluna
 - **Resumo Geral Turma**: Pendências resumidas por turma e tipo
 
-### `[TURMA]_analise_pendencias.xlsx`
-Relatório completo de cada turma com 6 abas:
+### `[TURMA]_[BIMESTRE]_analise_pendencias.xlsx`
+Relatório completo de cada turma e bimestre com 6 abas:
 - **Base Consolidada**: Todos os registros (aluno, atividade, status, semana)
 - **Resumo por Aluno**: Ranking de pendências (inclui todos os alunos, mesmo com 0 pendências)
 - **Resumo Disciplina**: Pendências por disciplina
