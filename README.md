@@ -33,6 +33,8 @@ TURMA_DISCIPLINA_BIMESTRE.csv
 - **DISCIPLINA**: Nome da disciplina sem espaços (ex: Logica, BancoDados)
 - **BIMESTRE**: Número do bimestre (1, 2, 3 ou 4)
 
+> **Dica:** para facilitar esse processo já no momento do download, use o script disponível no repositório [Scripts-Tampermonkey](https://github.com/Hilgo/Scripts-Tampermonkey). Ele gera o relatório da plataforma AVA já no template de nomenclatura usado neste projeto, reduzindo a necessidade de renomear os arquivos manualmente.
+
 ### 2️⃣ **Estrutura do Arquivo CSV**
 
 O relatório foi desenvolvido à partir do arquivo gerado do relatório de Conclusão de Atividades da plataforma AVA, que contém:
