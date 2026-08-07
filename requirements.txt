@@ -3,3 +3,6 @@ openpyxl
 fastapi
 uvicorn[standard]
 python-multipart
+Authlib
+httpx
+itsdangerous

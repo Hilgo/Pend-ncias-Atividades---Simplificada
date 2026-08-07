@@ -176,7 +176,23 @@ O modo local continua disponível e inalterado:
 python analisar_pendencias.py --ate-semana 8
 ```
 
-> Para disponibilizar a aplicação a outros professores, use HTTPS e inclua autenticação antes de torná-la pública. Os relatórios contêm dados pessoais de estudantes.
+### Login Google
+
+A interface web exige login Google para gerar relatórios. O login serve como uma barreira básica de acesso e não restringe domínio ou lista de e-mails nesta primeira versão. A aplicação não armazena o e-mail, nome ou token da conta após validar a autenticação.
+
+1. Crie um cliente OAuth do tipo **Aplicação Web** no Google Cloud Console.
+2. Cadastre a URI de redirecionamento `https://SEU_DOMINIO/auth/callback`.
+3. Configure estas variáveis no ambiente de hospedagem (use `.env.example` apenas como referência):
+
+```text
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+SESSION_SECRET=
+APP_BASE_URL=https://SEU_DOMINIO
+```
+
+Gere `SESSION_SECRET` com um valor aleatório longo e mantenha-o somente nas variáveis secretas do provedor. No Render, o endereço `*.onrender.com` já usa HTTPS; use esse endereço exato também no Google Cloud Console.
+
 
 ---
 
