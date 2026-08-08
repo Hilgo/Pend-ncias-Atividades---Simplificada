@@ -149,8 +149,14 @@ Relatório completo de cada turma e bimestre com 6 abas:
 ## ⚙️ Requisitos
 
 - **Python 3.7+**
-- **pandas**: Processamento de dados
-- **openpyxl**: Geração de arquivos Excel
+- **pandas**: processamento e consolidação dos dados
+- **openpyxl**: geração dos arquivos Excel
+- **FastAPI**: interface web e rotas HTTP
+- **Uvicorn**: servidor ASGI para executar a aplicação web
+- **python-multipart**: recebimento dos arquivos CSV enviados pelo formulário
+- **Authlib**: autenticação OAuth 2.0 com Google
+- **httpx**: comunicação HTTP utilizada pelo fluxo de autenticação
+- **itsdangerous**: assinatura segura dos cookies de sessão
 
 ### Instalação de Dependências
 
@@ -163,6 +169,10 @@ pip install -r requirements.txt
 ## 🌐 Uso pela Web
 
 A aplicação web usa a mesma lógica do script local. Os CSVs e os relatórios são mantidos apenas em uma pasta temporária durante o processamento; ao terminar o download do ZIP, essa pasta é removida.
+
+### Aplicação publicada
+
+O projeto está disponível no Render em [pendencias-atividades.onrender.com](https://pendencias-atividades.onrender.com/). Para evitar acessos indevidos, é necessário entrar com uma conta Google antes de gerar os relatórios. Nesta versão, o login é uma proteção básica de acesso e não restringe domínio ou uma lista específica de e-mails.
 
 ```bash
 uvicorn app_web:app --reload
@@ -178,7 +188,7 @@ python analisar_pendencias.py --ate-semana 8
 
 ### Login Google
 
-A interface web exige login Google para gerar relatórios. O login serve como uma barreira básica de acesso e não restringe domínio ou lista de e-mails nesta primeira versão. A aplicação não armazena o e-mail, nome ou token da conta após validar a autenticação.
+A interface web exige login Google para gerar relatórios. A aplicação não armazena o e-mail, nome ou token da conta após validar a autenticação.
 
 1. Crie um cliente OAuth do tipo **Aplicação Web** no Google Cloud Console.
 2. Cadastre a URI de redirecionamento `https://SEU_DOMINIO/auth/callback`.
